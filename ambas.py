@@ -22,35 +22,52 @@ def configurar_driver():
     driver = webdriver.Chrome(options=chrome_options)
     return driver
 
-def main():
+def executar_ciclo():
+    """Executa o navegador por 3 horas e depois fecha tudo para liberar memória."""
     driver = configurar_driver()
     
-    # Acessa as URLs
-    driver.get("https://botapostamax.netlify.app/")
-    driver.execute_script("window.open('https://botapostaganha.netlify.app/');")
-    
-    intervalo_refresh = 1200 # 20 minutos em segundos
-    ultima_atualizacao = time.time()
-    
     try:
+        # Acessa as URLs iniciais
+        driver.get("https://botapostamax.netlify.app/")
+        driver.execute_script("window.open('https://botapostaganha.netlify.app/');")
+        
+        intervalo_refresh = 1200  # 20 minutos em segundos
+        intervalo_reiniciar = 10800  # 3 horas em segundos
+        
+        inicio_ciclo = time.time()
+        ultima_atualizacao = time.time()
+        
         while True:
+            agora = time.time()
+            
+            # Condição para reiniciar o script 100% (3 horas)
+            if (agora - inicio_ciclo) > intervalo_reiniciar:
+                print("Reiniciando o navegador para limpar RAM e CPU...")
+                break # Sai do loop interno para cair no 'finally' e reabrir
+                
             # Alternância extremamente rápida entre abas
             for handle in driver.window_handles:
                 driver.switch_to.window(handle)
-                # Pausa mínima para o navegador processar a troca
-                time.sleep(0.2) 
+                time.sleep(0.2) # Pausa mínima para processamento
             
             # Refresh a cada 20 minutos
-            if (time.time() - ultima_atualizacao) > intervalo_refresh:
+            if (agora - ultima_atualizacao) > intervalo_refresh:
                 for handle in driver.window_handles:
                     driver.switch_to.window(handle)
                     driver.refresh()
                 ultima_atualizacao = time.time()
                 
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"Erro detectado: {e}")
     finally:
+        # Garante o fechamento total do processo do Chromium
         driver.quit()
+
+def main():
+    while True:
+        executar_ciclo()
+        # Pequena pausa de segurança de 5 segundos antes de reabrir tudo de novo
+        time.sleep(5)
 
 if __name__ == "__main__":
     main()
